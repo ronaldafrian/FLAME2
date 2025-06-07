@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recent FLAMERS - FLAME PFP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>🔥 Recent FLAME PFP</h1>
+  <div class="container">
+    <div id="userGallery" class="gallery" style="display:flex;flex-wrap:wrap;gap:1rem;"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script> 
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
+
+  <script>
+    const firebaseConfig = {
+     apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
+     authDomain: "flame-pfp-gallery.firebaseapp.com",
+     databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com",
+     projectId: "flame-pfp-gallery",
+     storageBucket: "flame-pfp-gallery.firebasestorage.app",
+     messagingSenderId: "886318353088",
+     appId: "1:886318353088:web:ffe6698531b7347b0bfb25"
+   };
+
+   firebase.initializeApp(firebaseConfig);
+   const database = firebase.database();
+   const galleryContainer = document.getElementById('userGallery');
+
+    // Fetch images from Firebase Realtime Database
+   database.ref('gallery').on('value', (snapshot) => {
+    galleryContainer.innerHTML = '';
+    const images = snapshot.val();
+    if (!images) {
+      galleryContainer.innerHTML = "<p>No new image.</p>";
+      return;
+    }
+    Object.values(images).forEach(data => {
+      const img = document.createElement('img');
+      img.src = data.image;
+      img.style.width = '150px';
+      img.style.height = '150px';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '10px';
+      img.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+      galleryContainer.appendChild(img);
+    });
+  });
+</script>
+</body>
+</html>

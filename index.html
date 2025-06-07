@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FLAME PFP Generator</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="favicon.png" />
+  <meta name="description" content="FLAME PFP Generator">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"  rel="stylesheet" />
+</head>
+<body>
+  <h1>
+    <img src="logo.png" alt="Logo" class="logo" />
+    FLAME PFP Generator
+  </h1>
+  <div class="container">
+    <!-- Upload Profil -->
+    <div class="input-section">
+      <h3>Upload Your Pic</h3>
+      <input type="file" id="profileInput" accept="image/*" aria-label="Upload profile picture" />
+    </div>
+
+    <!-- Cropper Preview -->
+    <div class="input-section" id="cropperContainer" style="display: none;">
+      <h3>Crop Image</h3>
+      <img id="cropperImage" alt="Crop preview" />
+      <button id="cropConfirmBtn">✔️ Confirm Crop</button>
+    </div>
+
+    <!-- Mask Gallery Horizontal Scroll -->
+    <div class="input-section">
+      <h3>Choose Mask</h3>
+      <div class="gallery-container">
+        <button id="prevBtn" class="nav-btn">&#8592;</button>
+        <div class="gallery" id="maskGallery">
+          <!-- Hanya 3 mask yang tertampil -->
+          <img src="mask1.png" alt="Mask 1" />
+          <img src="mask2.png" alt="Mask 2" />
+          <img src="mask3.png" alt="Mask 3" />
+        </div>
+        <button id="nextBtn" class="nav-btn">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Canvas untuk preview -->
+    <canvas id="pfpCanvas" width="512" height="512"></canvas>
+
+    <!-- Tombol Download -->
+    <div class="controls">
+      <button id="downloadBtn">💾 Download PFP</button>
+    </div>
+    <a href="gallery.html" style="color:#ff6600;text-decoration:none;font-weight:bold;">🎨 FLAMERS</a>
+  </div>
+
+  <!-- Script Section -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script> 
+  <script>
+    const profileInput = document.getElementById('profileInput');
+    const cropperImage = document.getElementById('cropperImage');
+    const cropperContainer = document.getElementById('cropperContainer');
+    const cropConfirmBtn = document.getElementById('cropConfirmBtn');
+    const canvas = document.getElementById('pfpCanvas');
+    const ctx = canvas.getContext('2d');
+    const maskGallery = document.getElementById('maskGallery');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let cropper = null;
+    let profileImg = null;
+    let maskImg = null;
+    let maskPosition = { x: 0, y: 0 };
+    let maskAngle = 0;
+    let maskScale = window.innerWidth <= 768 ? 0.25 : 0.35;
+
+    // Variabel untuk manipulasi drag/rotate/resize
+    let isDragging = false;
+    let isRotating = false;
+    let isResizing = false;
+    let isPinching = false;
+    let dragOffset = { x: 0, y: 0 };
+    let rotateStartAngle = 0;
+    let lastMaskAngle = 0;
+    let resizeStart = { x: 0, y: 0 };
+    let initialMaskScale = maskScale;
+    let initialDistance = 0;
+    let initialAngle = 0;
+    let pinchCenter = { x: 0, y: 0 };
+
+    // Daftar semua mask
+    const allMasks = [
+      "mask1.png", "mask2.png", "mask3.png",
+      "mask4.png", "mask5.png", "mask6.png",
+      "mask7.png", "mask8.png", "mask9.png",
+      "mask10.png", "mask11.png"
+    ];
+
+    let currentIndex = 0;
+    const maskWidth = 115; // lebar mask + gap
+
+    // Update tampilan hanya 3 mask
+    function updateGallery() {
+      maskGallery.innerHTML = ''; // Kosongkan dulu
+
+      for (let i = 0; i < 3; i++) {
+        const index = (currentIndex + i) % allMasks.length;
+        const img = document.createElement('img');
+        img.src = allMasks[index];
+        img.alt = `Mask ${index + 1}`;
+        if (i === 0) img.classList.add('selected'); // opsional
+        maskGallery.appendChild(img);
+      }
+
+      // Event listener untuk setiap mask
+      maskGallery.querySelectorAll('img').forEach((imgEl) => {
+        imgEl.addEventListener('click', () => {
+          maskGallery.querySelectorAll('img').forEach(i => i.classList.remove('selected'));
+          imgEl.classList.add('selected');
+          const selectedImg = new Image();
+          selectedImg.onload = () => {
+            maskImg = selectedImg;
+            centerMask();
+            drawPFP();
+          };
+          selectedImg.src = imgEl.src;
+        });
+      });
+    }
+
+    // Navigasi Looping
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + allMasks.length) % allMasks.length;
+      updateGallery();
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % allMasks.length;
+      updateGallery();
+    });
+
+    // Inisialisasi pertama kali
+    updateGallery();
+
+    // Upload Gambar
+    profileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        cropperImage.src = e.target.result;
+        cropperContainer.style.display = 'block';
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropperImage, {
+          aspectRatio: 1,
+          viewMode: 1,
+          autoCropArea: 1,
+          movable: true,
+          zoomable: false,
+          scalable: false,
+          rotatable: false,
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Konfirmasi Crop
+    cropConfirmBtn.addEventListener('click', () => {
+      if (cropper) {
+        const croppedCanvas = cropper.getCroppedCanvas({ width: 512, height: 512 });
+        const img = new Image();
+        img.onload = () => {
+          profileImg = img;
+          centerMask();
+          drawPFP();
+        };
+        img.src = croppedCanvas.toDataURL();
+        cropper.destroy();
+        cropper = null;
+        cropperContainer.style.display = 'none';
+      }
+    });
+
+    // Center Mask
+    function centerMask() {
+      if (!profileImg || !maskImg) return;
+      const isMobile = window.innerWidth <= 768;
+      const scale = isMobile ? 0.25 : 0.35;
+      maskScale = scale;
+      const scaledWidth = maskImg.width * scale;
+      const scaledHeight = maskImg.height * scale;
+      maskPosition.x = (canvas.width - scaledWidth) / 2;
+      maskPosition.y = (canvas.height - scaledHeight) / 2;
+      maskAngle = 0;
+      lastMaskAngle = 0;
+      drawPFP();
+    }
+
+    // Render ke Canvas
+    function drawPFP() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (profileImg) {
+        ctx.drawImage(profileImg, 0, 0, canvas.width, canvas.height);
+      }
+      if (maskImg) {
+        const scaledWidth = maskImg.width * maskScale;
+        const scaledHeight = maskImg.height * maskScale;
+        ctx.save();
+        ctx.translate(maskPosition.x + scaledWidth / 2, maskPosition.y + scaledHeight / 2);
+        ctx.rotate(maskAngle);
+        ctx.drawImage(maskImg, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
+        ctx.restore();
+
+        // Titik kontrol desktop
+        const isMobile = window.innerWidth <= 768;
+        if (!isMobile) {
+          const centerX = maskPosition.x + scaledWidth / 2;
+          const centerY = maskPosition.y + scaledHeight / 2;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY - scaledHeight / 2 - 20, 6, 0, Math.PI * 2);
+          ctx.fillStyle = 'red';
+          ctx.fill();
+          ctx.fillStyle = '#00ffcc';
+          ctx.fillRect(maskPosition.x + scaledWidth - 12, maskPosition.y + scaledHeight - 12, 12, 12);
+        }
+      } else {
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.font = "24px Arial";
+        ctx.fillText("No Mask/Image Selected", canvas.width / 2, canvas.height / 2);
+      }
+    }
+
+    // Responsif Canvas
+    function resizeCanvas() {
+      if (window.innerWidth <= 768) {
+        canvas.width = 400;
+        canvas.height = 400;
+        maskScale = 0.25;
+      } else {
+        canvas.width = 512;
+        canvas.height = 512;
+        maskScale = 0.35;
+      }
+      if (maskImg) centerMask();
+      else drawPFP();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('load', resizeCanvas);
+
+    // Mouse Events
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      if (!maskImg) return;
+      const scaledWidth = maskImg.width * maskScale;
+      const scaledHeight = maskImg.height * maskScale;
+      const centerX = maskPosition.x + scaledWidth / 2;
+      const centerY = maskPosition.y + scaledHeight / 2;
+
+      const handleSize = 40;
+      if (
+        mouseX >= maskPosition.x + scaledWidth - handleSize &&
+        mouseX <= maskPosition.x + scaledWidth &&
+        mouseY >= maskPosition.y + scaledHeight - handleSize &&
+        mouseY <= maskPosition.y + scaledHeight
+        ) {
+        isResizing = true;
+      resizeStart = { x: mouseX, y: mouseY };
+      initialMaskScale = maskScale;
+      return;
+    }
+
+    const dx = mouseX - centerX;
+    const dy = mouseY - (centerY - scaledHeight / 2 - 20);
+    if (Math.sqrt(dx * dx + dy * dy) <= 10) {
+      isRotating = true;
+      rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
+      return;
+    }
+
+    if (
+      mouseX >= maskPosition.x &&
+      mouseX <= maskPosition.x + maskImg.width * maskScale &&
+      mouseY >= maskPosition.y &&
+      mouseY <= maskPosition.y + maskImg.height * maskScale
+      ) {
+      isDragging = true;
+    dragOffset.x = mouseX - maskPosition.x;
+    dragOffset.y = mouseY - maskPosition.y;
+  }
+});
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      if (isDragging && maskImg) {
+        maskPosition.x = mouseX - dragOffset.x;
+        maskPosition.y = mouseY - dragOffset.y;
+        drawPFP();
+        return;
+      }
+
+      if (isRotating && maskImg) {
+        const centerX = maskPosition.x + maskImg.width * maskScale / 2;
+        const centerY = maskPosition.y + maskImg.height * maskScale / 2;
+        const angle = Math.atan2(mouseY - centerY, mouseX - centerX) - rotateStartAngle;
+        maskAngle = angle;
+        drawPFP();
+        return;
+      }
+
+      if (isResizing && maskImg) {
+        const dx = mouseX - resizeStart.x;
+        let newScale = initialMaskScale + dx / 200;
+        if (newScale >= 0.1 && newScale <= 2) {
+          maskScale = newScale;
+          drawPFP();
+        }
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isRotating) lastMaskAngle = maskAngle;
+      isDragging = false;
+      isRotating = false;
+      isResizing = false;
+      isPinching = false;
+    });
+
+    // Touch Events
+    canvas.addEventListener('touchstart', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!maskImg) return;
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+        const scaledWidth = maskImg.width * maskScale;
+        const scaledHeight = maskImg.height * maskScale;
+        if (
+          touchX >= maskPosition.x &&
+          touchX <= maskPosition.x + scaledWidth &&
+          touchY >= maskPosition.y &&
+          touchY <= maskPosition.y + scaledHeight
+          ) {
+          isDragging = true;
+        dragOffset.x = touchX - maskPosition.x;
+        dragOffset.y = touchY - maskPosition.y;
+      }
+    } else if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const xDiff = t1.clientX - t2.clientX;
+      const yDiff = t1.clientY - t2.clientY;
+      initialDistance = Math.hypot(xDiff, yDiff);
+      const xMid = (t1.clientX + t2.clientX) / 2;
+      const yMid = (t1.clientY + t2.clientY) / 2;
+      const midX = xMid - rect.left;
+      const midY = yMid - rect.top;
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      initialAngle = Math.atan2(dy, dx);
+      pinchCenter = { x: midX, y: midY };
+      isPinching = true;
+    }
+  }, { passive: true });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault(); // mencegah scroll saat drag
+      if (!maskImg) return;
+      if (e.touches.length === 1 && !isPinching) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+        if (isDragging) {
+          maskPosition.x = touchX - dragOffset.x;
+          maskPosition.y = touchY - dragOffset.y;
+          drawPFP();
+        }
+      } else if (e.touches.length === 2) {
+        const rect = canvas.getBoundingClientRect();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const xDiff = t1.clientX - t2.clientX;
+        const yDiff = t1.clientY - t2.clientY;
+        const distance = Math.hypot(xDiff, yDiff);
+        const scaleChange = distance / initialDistance;
+        let newScale = maskScale * scaleChange;
+        if (newScale >= 0.1 && newScale <= 3) maskScale = newScale;
+        const xMid = (t1.clientX + t2.clientX) / 2;
+        const yMid = (t1.clientY + t2.clientY) / 2;
+        const midX = xMid - rect.left;
+        const midY = yMid - rect.top;
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        const currentAngle = Math.atan2(dy, dx);
+        const angleChange = currentAngle - initialAngle;
+        maskAngle += angleChange;
+        lastMaskAngle = maskAngle;
+        const centerX = maskPosition.x + maskImg.width * maskScale / 2;
+        const centerY = maskPosition.y + maskImg.height * maskScale / 2;
+        const dxToCenter = centerX - pinchCenter.x;
+        const dyToCenter = centerY - pinchCenter.y;
+        const cos = Math.cos(angleChange);
+        const sin = Math.sin(angleChange);
+        const rotatedX = dxToCenter * cos - dyToCenter * sin;
+        const rotatedY = dxToCenter * sin + dyToCenter * cos;
+        maskPosition.x = pinchCenter.x + rotatedX - (maskImg.width * maskScale / 2);
+        maskPosition.y = pinchCenter.y + rotatedY - (maskImg.height * maskScale / 2);
+        initialDistance = distance;
+        initialAngle = currentAngle;
+        pinchCenter = { x: midX, y: midY };
+        drawPFP();
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+      isDragging = false;
+      isRotating = false;
+      isResizing = false;
+      isPinching = false;
+    });
+
+    // Tombol Download
+    downloadBtn.addEventListener('click', () => {
+      if (!profileImg) {
+        alert("UPLOAD YOUR PICT!");
+        return;
+      }
+      if (!maskImg) {
+        alert("ADD MASK!");
+        return;
+      }
+
+      const HD_SIZE = 1024;
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = HD_SIZE;
+      tempCanvas.height = HD_SIZE;
+
+  // Gambar background dan mask
+      tempCtx.drawImage(profileImg, 0, 0, HD_SIZE, HD_SIZE);
+
+      const scaleRatio = HD_SIZE / canvas.width;
+      const scaledWidth = maskImg.width * maskScale * scaleRatio;
+      const scaledHeight = maskImg.height * maskScale * scaleRatio;
+      const scaledX = maskPosition.x * scaleRatio;
+      const scaledY = maskPosition.y * scaleRatio;
+      const scaledAngle = maskAngle;
+
+      tempCtx.save();
+      tempCtx.translate(scaledX + scaledWidth / 2, scaledY + scaledHeight / 2);
+      tempCtx.rotate(scaledAngle);
+      tempCtx.drawImage(maskImg, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
+      tempCtx.restore();
+
+      const dataURL = tempCanvas.toDataURL('image/png');
+
+  // 🔽 DOWNLOAD FILE
+      const link = document.createElement('a');
+      link.download = 'FLAME_GANG_HD.png';
+      link.href = dataURL;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+  // 🔼 UPLOAD KE FIREBASE
+      const newPostRef = database.ref('gallery').push();
+      newPostRef.set({
+        image: dataURL,
+        timestamp: Date.now()
+      }).then(() => {
+        console.log("Berhasil diupload ke galeri");
+      }).catch((error) => {
+        console.error("Gagal upload ke galeri:", error);
+      });
+    });
+  </script>
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "firebase/app";
+  import { getAnalytics } from "firebase/analytics";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
+    authDomain: "flame-pfp-gallery.firebaseapp.com",
+    databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com",
+    projectId: "flame-pfp-gallery",
+    storageBucket: "flame-pfp-gallery.firebasestorage.app",
+    messagingSenderId: "886318353088",
+    appId: "1:886318353088:web:ffe6698531b7347b0bfb25",
+    measurementId: "G-JZQ21WW7SQ"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</body>
+</html>
