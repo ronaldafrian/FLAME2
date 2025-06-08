@@ -24,10 +24,6 @@ let rotateStartAngle = 0;
 let lastMaskAngle = 0;
 let resizeStart = { x: 0, y: 0 };
 let initialMaskScale = maskScale;
-let isPinching = false;
-let initialDistance = 0;
-let initialAngle = 0;
-let pinchCenter = { x: 0, y: 0 };
 
 // Daftar semua mask
 const allMasks = [
@@ -177,6 +173,8 @@ canvas.addEventListener('mousedown', (e) => {
 
   const scaledWidth = maskImg.width * maskScale;
   const scaledHeight = maskImg.height * maskScale;
+  const centerX = maskPosition.x + scaledWidth / 2;
+  const centerY = maskPosition.y + scaledHeight / 2;
   const handleSize = 40;
 
   if (
@@ -191,8 +189,6 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
 
-  const centerX = maskPosition.x + scaledWidth / 2;
-  const centerY = maskPosition.y + scaledHeight / 2;
   const dx = mouseX - centerX;
   const dy = mouseY - (centerY - scaledHeight / 2 - 20);
   if (Math.sqrt(dx * dx + dy * dy) <= 10) {
@@ -249,7 +245,6 @@ window.addEventListener('mouseup', () => {
   isDragging = false;
   isRotating = false;
   isResizing = false;
-  isPinching = false;
 });
 
 // Touch Events
@@ -261,6 +256,7 @@ canvas.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     const touchX = touch.clientX - rect.left;
     const touchY = touch.clientY - rect.top;
+
     const scaledWidth = maskImg.width * maskScale;
     const scaledHeight = maskImg.height * maskScale;
 
@@ -274,21 +270,6 @@ canvas.addEventListener('touchstart', (e) => {
       dragOffset.x = touchX - maskPosition.x;
       dragOffset.y = touchY - maskPosition.y;
     }
-  } else if (e.touches.length === 2) {
-    const t1 = e.touches[0];
-    const t2 = e.touches[1];
-    const xDiff = t1.clientX - t2.clientX;
-    const yDiff = t1.clientY - t2.clientY;
-    initialDistance = Math.hypot(xDiff, yDiff);
-    const xMid = (t1.clientX + t2.clientX) / 2;
-    const yMid = (t1.clientY + t2.clientY) / 2;
-    const midX = xMid - rect.left;
-    const midY = yMid - rect.top;
-    const dx = t1.clientX - t2.clientX;
-    const dy = t1.clientY - t2.clientY;
-    initialAngle = Math.atan2(dy, dx);
-    pinchCenter = { x: midX, y: midY };
-    isPinching = true;
   }
 }, { passive: true });
 
@@ -296,52 +277,17 @@ canvas.addEventListener('touchmove', (e) => {
   e.preventDefault(); // mencegah scroll saat drag
   if (!maskImg) return;
 
-  if (e.touches.length === 1 && !isPinching) {
+  if (e.touches.length === 1) {
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
     const touchY = touch.clientY - rect.top;
+
     if (isDragging) {
       maskPosition.x = touchX - dragOffset.x;
       maskPosition.y = touchY - dragOffset.y;
       drawPFP();
     }
-  } else if (e.touches.length === 2) {
-    const rect = canvas.getBoundingClientRect();
-    const t1 = e.touches[0];
-    const t2 = e.touches[1];
-    const xDiff = t1.clientX - t2.clientX;
-    const yDiff = t1.clientY - t2.clientY;
-    const distance = Math.hypot(xDiff, yDiff);
-    const scaleChange = distance / initialDistance;
-    let newScale = maskScale * scaleChange;
-    if (newScale >= 0.1 && newScale <= 3) maskScale = newScale;
-
-    const xMid = (t1.clientX + t2.clientX) / 2;
-    const yMid = (t1.clientY + t2.clientY) / 2;
-    const midX = xMid - rect.left;
-    const midY = yMid - rect.top;
-    const dx = t1.clientX - t2.clientX;
-    const dy = t1.clientY - t2.clientY;
-    const currentAngle = Math.atan2(dy, dx);
-    const angleChange = currentAngle - initialAngle;
-    maskAngle += angleChange;
-    lastMaskAngle = maskAngle;
-
-    const centerX = maskPosition.x + maskImg.width * maskScale / 2;
-    const centerY = maskPosition.y + maskImg.height * maskScale / 2;
-    const dxToCenter = centerX - pinchCenter.x;
-    const dyToCenter = centerY - pinchCenter.y;
-    const cos = Math.cos(angleChange);
-    const sin = Math.sin(angleChange);
-    const rotatedX = dxToCenter * cos - dyToCenter * sin;
-    const rotatedY = dxToCenter * sin + dyToCenter * cos;
-    maskPosition.x = pinchCenter.x + rotatedX - (maskImg.width * maskScale / 2);
-    maskPosition.y = pinchCenter.y + rotatedY - (maskImg.height * maskScale / 2);
-    initialDistance = distance;
-    initialAngle = currentAngle;
-    pinchCenter = { x: midX, y: midY };
-    drawPFP();
   }
 }, { passive: false });
 
@@ -349,7 +295,6 @@ canvas.addEventListener('touchend', () => {
   isDragging = false;
   isRotating = false;
   isResizing = false;
-  isPinching = false;
 });
 
 // Tombol Download & Upload ke Firebase
@@ -368,6 +313,7 @@ downloadBtn.addEventListener('click', () => {
   const tempCtx = tempCanvas.getContext('2d');
   tempCanvas.width = HD_SIZE;
   tempCanvas.height = HD_SIZE;
+
   tempCtx.drawImage(profileImg, 0, 0, HD_SIZE, HD_SIZE);
 
   const scaleRatio = HD_SIZE / canvas.width;
@@ -419,26 +365,59 @@ firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
 // Ambil gambar dari Firebase dan tampilkan
-database.ref('gallery').on('value', (snapshot) => {
-  const galleryContainer = document.getElementById('userGallery');
+const galleryContainer = document.getElementById('userGallery');
+let currentPage = 1;
+const itemsPerPage = 8;
+
+function fetchAndDisplayImages() {
   galleryContainer.innerHTML = '';
-  const images = snapshot.val();
-  if (!images) {
-    galleryContainer.innerHTML = "<p>Tidak ada gambar tersedia.</p>";
-    return;
+  database.ref('gallery').on('value', (snapshot) => {
+    const images = snapshot.val();
+    if (!images) {
+      galleryContainer.innerHTML = "<p>Tidak ada gambar tersedia.</p>";
+      return;
+    }
+
+    const imageArray = Object.values(images).map(data => data.image);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedImages = imageArray.slice(startIndex, startIndex + itemsPerPage);
+
+    paginatedImages.forEach(imageUrl => {
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.style.width = '100%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '10px';
+      img.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.15)';
+      img.style.transition = 'transform 0.3s ease';
+      img.style.cursor = 'pointer';
+
+      img.addEventListener('mouseenter', () => img.style.transform = 'scale(1.1)');
+      img.addEventListener('mouseleave', () => img.style.transform = 'scale(1.0)');
+      galleryContainer.appendChild(img);
+    });
+
+    // Disable pagination jika tidak cukup gambar
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = startIndex + paginatedImages.length >= imageArray.length;
+  });
+}
+
+document.getElementById('prevPageBtn').addEventListener('click', () => {
+  if (currentPage > 1) {
+    currentPage--;
+    fetchAndDisplayImages();
   }
-  Object.values(images).forEach(data => {
-    const img = document.createElement('img');
-    img.src = data.image;
-    img.style.width = '150px';
-    img.style.height = '150px';
-    img.style.objectFit = 'cover';
-    img.style.borderRadius = '10px';
-    img.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-    img.style.transition = 'transform 0.3s ease';
-    img.style.cursor = 'pointer';
-    img.addEventListener('mouseenter', () => img.style.transform = 'scale(1.1)');
-    img.addEventListener('mouseleave', () => img.style.transform = 'scale(1.0)');
-    galleryContainer.appendChild(img);
+});
+
+document.getElementById('nextPageBtn').addEventListener('click', () => {
+  database.ref('gallery').once('value', (snapshot) => {
+    const totalImages = snapshot.numChildren();
+    if ((currentPage * itemsPerPage) < totalImages) {
+      currentPage++;
+      fetchAndDisplayImages();
+    }
   });
 });
+
+fetchAndDisplayImages();
