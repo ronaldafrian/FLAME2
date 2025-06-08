@@ -182,31 +182,31 @@ canvas.addEventListener('mousedown', (e) => {
     mouseX <= maskPosition.x + scaledWidth &&
     mouseY >= maskPosition.y + scaledHeight - handleSize &&
     mouseY <= maskPosition.y + scaledHeight
-  ) {
+    ) {
     isResizing = true;
-    resizeStart = { x: mouseX, y: mouseY };
-    initialMaskScale = maskScale;
-    return;
-  }
+  resizeStart = { x: mouseX, y: mouseY };
+  initialMaskScale = maskScale;
+  return;
+}
 
-  const dx = mouseX - centerX;
-  const dy = mouseY - (centerY - scaledHeight / 2 - 20);
-  if (Math.sqrt(dx * dx + dy * dy) <= 10) {
-    isRotating = true;
-    rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
-    return;
-  }
+const dx = mouseX - centerX;
+const dy = mouseY - (centerY - scaledHeight / 2 - 20);
+if (Math.sqrt(dx * dx + dy * dy) <= 10) {
+  isRotating = true;
+  rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
+  return;
+}
 
-  if (
-    mouseX >= maskPosition.x &&
-    mouseX <= maskPosition.x + maskImg.width * maskScale &&
-    mouseY >= maskPosition.y &&
-    mouseY <= maskPosition.y + maskImg.height * maskScale
+if (
+  mouseX >= maskPosition.x &&
+  mouseX <= maskPosition.x + maskImg.width * maskScale &&
+  mouseY >= maskPosition.y &&
+  mouseY <= maskPosition.y + maskImg.height * maskScale
   ) {
-    isDragging = true;
-    dragOffset.x = mouseX - maskPosition.x;
-    dragOffset.y = mouseY - maskPosition.y;
-  }
+  isDragging = true;
+dragOffset.x = mouseX - maskPosition.x;
+dragOffset.y = mouseY - maskPosition.y;
+}
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -265,12 +265,12 @@ canvas.addEventListener('touchstart', (e) => {
       touchX <= maskPosition.x + scaledWidth &&
       touchY >= maskPosition.y &&
       touchY <= maskPosition.y + scaledHeight
-    ) {
+      ) {
       isDragging = true;
-      dragOffset.x = touchX - maskPosition.x;
-      dragOffset.y = touchY - maskPosition.y;
-    }
+    dragOffset.x = touchX - maskPosition.x;
+    dragOffset.y = touchY - maskPosition.y;
   }
+}
 }, { passive: true });
 
 canvas.addEventListener('touchmove', (e) => {
@@ -367,9 +367,10 @@ const database = firebase.database();
 // Ambil gambar dari Firebase dan tampilkan
 const galleryContainer = document.getElementById('userGallery');
 let currentPage = 1;
-const itemsPerPage = 8;
+const itemsPerPage = 8; // Number of images per page
 
 function fetchAndDisplayImages() {
+  const galleryContainer = document.getElementById('userGallery');
   galleryContainer.innerHTML = '';
   database.ref('gallery').on('value', (snapshot) => {
     const images = snapshot.val();
@@ -385,7 +386,8 @@ function fetchAndDisplayImages() {
     paginatedImages.forEach(imageUrl => {
       const img = document.createElement('img');
       img.src = imageUrl;
-      img.style.width = '100%';
+      img.style.width = '150px'; // Match CSS width
+      img.style.height = '150px'; // Match CSS height
       img.style.objectFit = 'cover';
       img.style.borderRadius = '10px';
       img.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.15)';
@@ -397,12 +399,13 @@ function fetchAndDisplayImages() {
       galleryContainer.appendChild(img);
     });
 
-    // Disable pagination jika tidak cukup gambar
+    // Disable pagination buttons if necessary
     document.getElementById('prevPageBtn').disabled = currentPage === 1;
     document.getElementById('nextPageBtn').disabled = startIndex + paginatedImages.length >= imageArray.length;
   });
 }
 
+// Pagination Event Listeners
 document.getElementById('prevPageBtn').addEventListener('click', () => {
   if (currentPage > 1) {
     currentPage--;
