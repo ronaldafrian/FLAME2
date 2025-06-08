@@ -35,7 +35,6 @@
       <div class="gallery-container">
         <button id="prevBtn" class="nav-btn">&#8592;</button>
         <div class="gallery" id="maskGallery">
-          <!-- Hanya 3 mask yang tertampil -->
           <img src="mask1.png" alt="Mask 1" />
           <img src="mask2.png" alt="Mask 2" />
           <img src="mask3.png" alt="Mask 3" />
@@ -53,21 +52,22 @@
     </div>
   </div>
 
-  <!-- Gallery Section -->
-  <div class="gallery-container">
-    <h2 id="gallery-title">🔥 Recent FLAME PFP</h2>
-    <div id="userGallery" class="gallery"></div>
+  <!-- Galeri Hasil User - Grid 6x2 -->
+  <h2 id="gallery-title">🔥 Recent FLAME PFP</h2>
+  <div class="user-gallery-grid" id="userGalleryGrid">
+    <!-- Gambar akan dimuat secara dinamis -->
   </div>
 
   <!-- Pagination Controls -->
-  <div class="pagination">
-    <button id="prevPageBtn">❮ Previous</button>
+  <div class="pagination-controls">
+    <button id="prevPageBtn" disabled>❮ Previous</button>
+    <span id="pageInfo">Page 1 of 1</span>
     <button id="nextPageBtn">Next ❯</button>
   </div>
 
   <!-- Script Section -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script> 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script> 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script> 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script> 
   <script src="script.js"></script>
 </body>
