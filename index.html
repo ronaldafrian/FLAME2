@@ -50,12 +50,35 @@
     <div class="controls">
       <button id="downloadBtn">💾 Download PFP</button>
     </div>
+
+    <!-- Link ke Galeri -->
     <a href="gallery.html" style="color:#ff6600;text-decoration:none;font-weight:bold;">🎨 FLAMERS</a>
   </div>
 
   <!-- Script Section -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script> 
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script> 
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script> 
+
   <script>
+    // Konfigurasi Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
+      authDomain: "flame-pfp-gallery.firebaseapp.com",
+      databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com", 
+      projectId: "flame-pfp-gallery",
+      storageBucket: "flame-pfp-gallery.firebasestorage.app",
+      messagingSenderId: "886318353088",
+      appId: "1:886318353088:web:ffe6698531b7347b0bfb25"
+    };
+
+    // Inisialisasi Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Referensi DOM
     const profileInput = document.getElementById('profileInput');
     const cropperImage = document.getElementById('cropperImage');
     const cropperContainer = document.getElementById('cropperContainer');
@@ -72,19 +95,15 @@
     let maskAngle = 0;
     let maskScale = window.innerWidth <= 768 ? 0.25 : 0.35;
 
-    // Variabel untuk manipulasi drag/rotate/resize
+    // Variabel kontrol interaksi
     let isDragging = false;
     let isRotating = false;
     let isResizing = false;
-    let isPinching = false;
     let dragOffset = { x: 0, y: 0 };
     let rotateStartAngle = 0;
     let lastMaskAngle = 0;
     let resizeStart = { x: 0, y: 0 };
     let initialMaskScale = maskScale;
-    let initialDistance = 0;
-    let initialAngle = 0;
-    let pinchCenter = { x: 0, y: 0 };
 
     // Daftar semua mask
     const allMasks = [
@@ -93,24 +112,19 @@
       "mask7.png", "mask8.png", "mask9.png",
       "mask10.png", "mask11.png"
     ];
-
     let currentIndex = 0;
-    const maskWidth = 115; // lebar mask + gap
 
-    // Update tampilan hanya 3 mask
     function updateGallery() {
-      maskGallery.innerHTML = ''; // Kosongkan dulu
-
+      maskGallery.innerHTML = '';
       for (let i = 0; i < 3; i++) {
         const index = (currentIndex + i) % allMasks.length;
         const img = document.createElement('img');
         img.src = allMasks[index];
         img.alt = `Mask ${index + 1}`;
-        if (i === 0) img.classList.add('selected'); // opsional
+        if (i === 0) img.classList.add('selected');
         maskGallery.appendChild(img);
       }
 
-      // Event listener untuk setiap mask
       maskGallery.querySelectorAll('img').forEach((imgEl) => {
         imgEl.addEventListener('click', () => {
           maskGallery.querySelectorAll('img').forEach(i => i.classList.remove('selected'));
@@ -126,7 +140,6 @@
       });
     }
 
-    // Navigasi Looping
     document.getElementById('prevBtn').addEventListener('click', () => {
       currentIndex = (currentIndex - 1 + allMasks.length) % allMasks.length;
       updateGallery();
@@ -137,7 +150,6 @@
       updateGallery();
     });
 
-    // Inisialisasi pertama kali
     updateGallery();
 
     // Upload Gambar
@@ -209,7 +221,6 @@
         ctx.drawImage(maskImg, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
         ctx.restore();
 
-        // Titik kontrol desktop
         const isMobile = window.innerWidth <= 768;
         if (!isMobile) {
           const centerX = maskPosition.x + scaledWidth / 2;
@@ -252,44 +263,46 @@
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
+
       if (!maskImg) return;
+
       const scaledWidth = maskImg.width * maskScale;
       const scaledHeight = maskImg.height * maskScale;
       const centerX = maskPosition.x + scaledWidth / 2;
       const centerY = maskPosition.y + scaledHeight / 2;
-
       const handleSize = 40;
+
       if (
         mouseX >= maskPosition.x + scaledWidth - handleSize &&
         mouseX <= maskPosition.x + scaledWidth &&
         mouseY >= maskPosition.y + scaledHeight - handleSize &&
         mouseY <= maskPosition.y + scaledHeight
-        ) {
-        isResizing = true;
-      resizeStart = { x: mouseX, y: mouseY };
-      initialMaskScale = maskScale;
-      return;
-    }
-
-    const dx = mouseX - centerX;
-    const dy = mouseY - (centerY - scaledHeight / 2 - 20);
-    if (Math.sqrt(dx * dx + dy * dy) <= 10) {
-      isRotating = true;
-      rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
-      return;
-    }
-
-    if (
-      mouseX >= maskPosition.x &&
-      mouseX <= maskPosition.x + maskImg.width * maskScale &&
-      mouseY >= maskPosition.y &&
-      mouseY <= maskPosition.y + maskImg.height * maskScale
       ) {
-      isDragging = true;
-    dragOffset.x = mouseX - maskPosition.x;
-    dragOffset.y = mouseY - maskPosition.y;
-  }
-});
+        isResizing = true;
+        resizeStart = { x: mouseX, y: mouseY };
+        initialMaskScale = maskScale;
+        return;
+      }
+
+      const dx = mouseX - centerX;
+      const dy = mouseY - (centerY - scaledHeight / 2 - 20);
+      if (Math.sqrt(dx * dx + dy * dy) <= 10) {
+        isRotating = true;
+        rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
+        return;
+      }
+
+      if (
+        mouseX >= maskPosition.x &&
+        mouseX <= maskPosition.x + scaledWidth &&
+        mouseY >= maskPosition.y &&
+        mouseY <= maskPosition.y + scaledHeight
+      ) {
+        isDragging = true;
+        dragOffset.x = mouseX - maskPosition.x;
+        dragOffset.y = mouseY - maskPosition.y;
+      }
+    });
 
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -327,94 +340,48 @@
       isDragging = false;
       isRotating = false;
       isResizing = false;
-      isPinching = false;
     });
 
     // Touch Events
     canvas.addEventListener('touchstart', (e) => {
       const rect = canvas.getBoundingClientRect();
       if (!maskImg) return;
+
       if (e.touches.length === 1) {
         const touch = e.touches[0];
         const touchX = touch.clientX - rect.left;
         const touchY = touch.clientY - rect.top;
         const scaledWidth = maskImg.width * maskScale;
         const scaledHeight = maskImg.height * maskScale;
+
         if (
           touchX >= maskPosition.x &&
           touchX <= maskPosition.x + scaledWidth &&
           touchY >= maskPosition.y &&
           touchY <= maskPosition.y + scaledHeight
-          ) {
+        ) {
           isDragging = true;
-        dragOffset.x = touchX - maskPosition.x;
-        dragOffset.y = touchY - maskPosition.y;
+          dragOffset.x = touchX - maskPosition.x;
+          dragOffset.y = touchY - maskPosition.y;
+        }
       }
-    } else if (e.touches.length === 2) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const xDiff = t1.clientX - t2.clientX;
-      const yDiff = t1.clientY - t2.clientY;
-      initialDistance = Math.hypot(xDiff, yDiff);
-      const xMid = (t1.clientX + t2.clientX) / 2;
-      const yMid = (t1.clientY + t2.clientY) / 2;
-      const midX = xMid - rect.left;
-      const midY = yMid - rect.top;
-      const dx = t1.clientX - t2.clientX;
-      const dy = t1.clientY - t2.clientY;
-      initialAngle = Math.atan2(dy, dx);
-      pinchCenter = { x: midX, y: midY };
-      isPinching = true;
-    }
-  }, { passive: true });
+    }, { passive: true });
 
     canvas.addEventListener('touchmove', (e) => {
       e.preventDefault(); // mencegah scroll saat drag
       if (!maskImg) return;
-      if (e.touches.length === 1 && !isPinching) {
+
+      if (e.touches.length === 1) {
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
         const touchX = touch.clientX - rect.left;
         const touchY = touch.clientY - rect.top;
+
         if (isDragging) {
           maskPosition.x = touchX - dragOffset.x;
           maskPosition.y = touchY - dragOffset.y;
           drawPFP();
         }
-      } else if (e.touches.length === 2) {
-        const rect = canvas.getBoundingClientRect();
-        const t1 = e.touches[0];
-        const t2 = e.touches[1];
-        const xDiff = t1.clientX - t2.clientX;
-        const yDiff = t1.clientY - t2.clientY;
-        const distance = Math.hypot(xDiff, yDiff);
-        const scaleChange = distance / initialDistance;
-        let newScale = maskScale * scaleChange;
-        if (newScale >= 0.1 && newScale <= 3) maskScale = newScale;
-        const xMid = (t1.clientX + t2.clientX) / 2;
-        const yMid = (t1.clientY + t2.clientY) / 2;
-        const midX = xMid - rect.left;
-        const midY = yMid - rect.top;
-        const dx = t1.clientX - t2.clientX;
-        const dy = t1.clientY - t2.clientY;
-        const currentAngle = Math.atan2(dy, dx);
-        const angleChange = currentAngle - initialAngle;
-        maskAngle += angleChange;
-        lastMaskAngle = maskAngle;
-        const centerX = maskPosition.x + maskImg.width * maskScale / 2;
-        const centerY = maskPosition.y + maskImg.height * maskScale / 2;
-        const dxToCenter = centerX - pinchCenter.x;
-        const dyToCenter = centerY - pinchCenter.y;
-        const cos = Math.cos(angleChange);
-        const sin = Math.sin(angleChange);
-        const rotatedX = dxToCenter * cos - dyToCenter * sin;
-        const rotatedY = dxToCenter * sin + dyToCenter * cos;
-        maskPosition.x = pinchCenter.x + rotatedX - (maskImg.width * maskScale / 2);
-        maskPosition.y = pinchCenter.y + rotatedY - (maskImg.height * maskScale / 2);
-        initialDistance = distance;
-        initialAngle = currentAngle;
-        pinchCenter = { x: midX, y: midY };
-        drawPFP();
       }
     }, { passive: false });
 
@@ -422,10 +389,9 @@
       isDragging = false;
       isRotating = false;
       isResizing = false;
-      isPinching = false;
     });
 
-    // Tombol Download
+    // Tombol Download & Upload ke Firebase
     downloadBtn.addEventListener('click', () => {
       if (!profileImg) {
         alert("UPLOAD YOUR PICT!");
@@ -442,7 +408,6 @@
       tempCanvas.width = HD_SIZE;
       tempCanvas.height = HD_SIZE;
 
-  // Gambar background dan mask
       tempCtx.drawImage(profileImg, 0, 0, HD_SIZE, HD_SIZE);
 
       const scaleRatio = HD_SIZE / canvas.width;
@@ -460,7 +425,6 @@
 
       const dataURL = tempCanvas.toDataURL('image/png');
 
-  // 🔽 DOWNLOAD FILE
       const link = document.createElement('a');
       link.download = 'FLAME_GANG_HD.png';
       link.href = dataURL;
@@ -468,7 +432,7 @@
       link.click();
       document.body.removeChild(link);
 
-  // 🔼 UPLOAD KE FIREBASE
+      // Upload ke Firebase
       const newPostRef = database.ref('gallery').push();
       newPostRef.set({
         image: dataURL,
@@ -480,27 +444,5 @@
       });
     });
   </script>
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "firebase/app";
-  import { getAnalytics } from "firebase/analytics";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
-    authDomain: "flame-pfp-gallery.firebaseapp.com",
-    databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com",
-    projectId: "flame-pfp-gallery",
-    storageBucket: "flame-pfp-gallery.firebasestorage.app",
-    messagingSenderId: "886318353088",
-    appId: "1:886318353088:web:ffe6698531b7347b0bfb25",
-    measurementId: "G-JZQ21WW7SQ"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
 </body>
 </html>
