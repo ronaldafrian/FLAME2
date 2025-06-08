@@ -114,24 +114,12 @@ button#downloadBtn:hover {
 }
 
 #prevBtn {
-  left: 0px; /* Tombol kiri lebih dekat */
+  left: 0px;
 }
 
 #nextBtn {
-  right: 0px; /* Tombol kanan lebih dekat */
+  right: 0px;
 }
-
-.gallery-container {
-  position: relative;
-  width: 100%;
-  max-width: 700px; /* Tambahkan agar tidak terlalu lebar */
-  margin: 0 auto; /* Ini akan memusatkan kontainer */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0px; /* Tambah padding agar tombol panah tidak mepet */
-}
-
 
 .gallery {
   display: flex;
@@ -140,19 +128,18 @@ button#downloadBtn:hover {
   overflow-x: auto;
   padding: 0 10px;
   height: 180px;
-  justify-content: center; /* ini penting agar isi tetap di tengah */
+  justify-content: center;
   align-items: center;
   position: relative;
   width: 100%;
   max-width: 100%;
 }
 
-
 #maskGallery img.selected {
   border: 2px solid #ff6600;
   box-shadow: 0 4px 12px rgba(255, 102, 0, 0.7);
   transform: scale(1.05);
-  margin-left: 10px; /* offset untuk outline */
+  margin-left: 10px;
 }
 
 .gallery::-webkit-scrollbar {
@@ -294,10 +281,10 @@ button#downloadBtn:hover {
   /* Mobile gallery styles */
   .gallery {
     width: 100%;
-    padding: 0 10px;     /* Tambah padding agar outline tidak kepotong */
+    padding: 0 10px;
     gap: 10px;
     height: 100px;
-    overflow-x: auto;    /* Penting untuk scroll di mobile */
+    overflow-x: auto;
   }
 
   #maskGallery img {
@@ -313,9 +300,4 @@ button#downloadBtn:hover {
   .cropper-container {
     max-width: 100%;
   }
-}
-
-:root {
-  --mask-scale-desktop: 0.35;
-  --mask-scale-mobile: 0.25;
 }
