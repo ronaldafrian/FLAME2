@@ -2,7 +2,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
   authDomain: "flame-pfp-gallery.firebaseapp.com",
-  databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com", 
+  databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com",  
   projectId: "flame-pfp-gallery",
   storageBucket: "flame-pfp-gallery.firebasestorage.app",
   messagingSenderId: "886318353088",
@@ -58,7 +58,6 @@ function updateGallery() {
     img.alt = `Mask ${index + 1}`;
     if (i === 0) img.classList.add('selected');
     maskGallery.appendChild(img);
-
     img.addEventListener('click', () => {
       maskGallery.querySelectorAll('img').forEach(i => i.classList.remove('selected'));
       img.classList.add('selected');
@@ -145,30 +144,25 @@ function drawPFP() {
   if (profileImg) {
     ctx.drawImage(profileImg, 0, 0, canvas.width, canvas.height);
   }
-
   if (maskImg) {
     const scaledWidth = maskImg.width * maskScale;
     const scaledHeight = maskImg.height * maskScale;
-
     // Gambar mask
     ctx.save();
     ctx.translate(maskPosition.x + scaledWidth / 2, maskPosition.y + scaledHeight / 2);
     ctx.rotate(maskAngle);
     ctx.drawImage(maskImg, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
     ctx.restore();
-
     // Titik kontrol hanya untuk desktop
     const isMobile = window.innerWidth <= 768;
     if (!isMobile) {
       const centerX = maskPosition.x + scaledWidth / 2;
       const centerY = maskPosition.y + scaledHeight / 2;
-
       // Titik rotate (lingkaran merah)
       ctx.beginPath();
       ctx.arc(centerX, centerY - scaledHeight / 2 - 20, 6, 0, Math.PI * 2);
       ctx.fillStyle = 'red';
       ctx.fill();
-
       // Kotak resize (biru muda)
       ctx.fillStyle = '#00ffcc';
       ctx.fillRect(centerX + scaledWidth / 2 - 12, centerY + scaledHeight / 2 - 12, 12, 12);
@@ -195,7 +189,6 @@ function resizeCanvas() {
   if (maskImg) centerMask();
   else drawPFP();
 }
-
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('load', resizeCanvas);
 
@@ -204,9 +197,7 @@ canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
-
   if (!maskImg) return;
-
   const scaledWidth = maskImg.width * maskScale;
   const scaledHeight = maskImg.height * maskScale;
   const handleSize = 40;
@@ -217,49 +208,47 @@ canvas.addEventListener('mousedown', (e) => {
     mouseX <= maskPosition.x + scaledWidth &&
     mouseY >= maskPosition.y + scaledHeight - handleSize &&
     mouseY <= maskPosition.y + scaledHeight
-  ) {
+    ) {
     isResizing = true;
-    resizeStart = { x: mouseX, y: mouseY };
-    initialMaskScale = maskScale;
-    return;
-  }
+  resizeStart = { x: mouseX, y: mouseY };
+  initialMaskScale = maskScale;
+  return;
+}
 
   // Rotate Handle
-  const centerX = maskPosition.x + scaledWidth / 2;
-  const centerY = maskPosition.y + scaledHeight / 2;
-  const dx = mouseX - centerX;
-  const dy = mouseY - (centerY - scaledHeight / 2 - 20);
-  if (Math.sqrt(dx * dx + dy * dy) <= 10) {
-    isRotating = true;
-    rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
-    return;
-  }
+const centerX = maskPosition.x + scaledWidth / 2;
+const centerY = maskPosition.y + scaledHeight / 2;
+const dx = mouseX - centerX;
+const dy = mouseY - (centerY - scaledHeight / 2 - 20);
+if (Math.sqrt(dx * dx + dy * dy) <= 10) {
+  isRotating = true;
+  rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
+  return;
+}
 
   // Drag Handle
-  if (
-    mouseX >= maskPosition.x &&
-    mouseX <= maskPosition.x + scaledWidth &&
-    mouseY >= maskPosition.y &&
-    mouseY <= maskPosition.y + scaledHeight
+if (
+  mouseX >= maskPosition.x &&
+  mouseX <= maskPosition.x + scaledWidth &&
+  mouseY >= maskPosition.y &&
+  mouseY <= maskPosition.y + scaledHeight
   ) {
-    isDragging = true;
-    dragOffset.x = mouseX - maskPosition.x;
-    dragOffset.y = mouseY - maskPosition.y;
-  }
+  isDragging = true;
+dragOffset.x = mouseX - maskPosition.x;
+dragOffset.y = mouseY - maskPosition.y;
+}
 });
 
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
-
   if (isDragging && maskImg) {
     maskPosition.x = mouseX - dragOffset.x;
     maskPosition.y = mouseY - dragOffset.y;
     drawPFP();
     return;
   }
-
   if (isRotating && maskImg) {
     const centerX = maskPosition.x + maskImg.width * maskScale / 2;
     const centerY = maskPosition.y + maskImg.height * maskScale / 2;
@@ -268,7 +257,6 @@ canvas.addEventListener('mousemove', (e) => {
     drawPFP();
     return;
   }
-
   if (isResizing && maskImg) {
     const dx = mouseX - resizeStart.x;
     let newScale = initialMaskScale + dx / 200;
@@ -290,38 +278,33 @@ window.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', (e) => {
   const rect = canvas.getBoundingClientRect();
   if (!maskImg) return;
-
   if (e.touches.length === 1) {
     const touch = e.touches[0];
     const touchX = touch.clientX - rect.left;
     const touchY = touch.clientY - rect.top;
-
     const scaledWidth = maskImg.width * maskScale;
     const scaledHeight = maskImg.height * maskScale;
-
     if (
       touchX >= maskPosition.x &&
       touchX <= maskPosition.x + scaledWidth &&
       touchY >= maskPosition.y &&
       touchY <= maskPosition.y + scaledHeight
-    ) {
+      ) {
       isDragging = true;
-      dragOffset.x = touchX - maskPosition.x;
-      dragOffset.y = touchY - maskPosition.y;
-    }
+    dragOffset.x = touchX - maskPosition.x;
+    dragOffset.y = touchY - maskPosition.y;
   }
+}
 }, { passive: true });
 
 canvas.addEventListener('touchmove', (e) => {
   e.preventDefault(); // Mencegah scroll saat drag
   if (!maskImg) return;
-
   if (e.touches.length === 1) {
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
     const touchY = touch.clientY - rect.top;
-
     if (isDragging) {
       maskPosition.x = touchX - dragOffset.x;
       maskPosition.y = touchY - dragOffset.y;
@@ -352,8 +335,6 @@ downloadBtn.addEventListener('click', () => {
   const tempCtx = tempCanvas.getContext('2d');
   tempCanvas.width = HD_SIZE;
   tempCanvas.height = HD_SIZE;
-
-  // Gambar background dan mask
   tempCtx.drawImage(profileImg, 0, 0, HD_SIZE, HD_SIZE);
 
   const scaleRatio = HD_SIZE / canvas.width;
@@ -391,31 +372,37 @@ downloadBtn.addEventListener('click', () => {
   });
 });
 
-// Ambil gambar dari Firebase dan tampilkan
-const galleryContainer = document.getElementById('userGallery');
+// Galeri Hasil User - Grid 6x2
+const galleryGrid = document.getElementById("userGalleryGrid");
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageInfo = document.getElementById("pageInfo");
+
 let currentPage = 1;
-const itemsPerPage = 8;
+const itemsPerPage = 12; // 6 kolom × 2 baris
 
 function fetchAndDisplayImages() {
-  galleryContainer.innerHTML = '';
+  galleryGrid.innerHTML = '';
   database.ref('gallery').on('value', (snapshot) => {
     const images = snapshot.val();
     if (!images) {
-      galleryContainer.innerHTML = "<p>Tidak ada gambar tersedia.</p>";
+      galleryGrid.innerHTML = "<p>Tidak ada gambar tersedia.</p>";
+      pageInfo.textContent = "Page 1 of 1";
       return;
     }
 
     const imageArray = Object.values(images).map(data => data.image);
+    const totalPages = Math.ceil(imageArray.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedImages = imageArray.slice(startIndex, startIndex + itemsPerPage);
 
     paginatedImages.forEach(imageUrl => {
       const img = document.createElement('img');
       img.src = imageUrl;
-      img.style.width = '150px';
-      img.style.height = '150px';
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '10px';
+      img.style.maxWidth = '200px';
+      img.style.maxHeight = '200px';
+      img.style.objectFit = 'contain';
+      img.style.borderRadius = '0px';
       img.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
       img.style.transition = 'transform 0.3s ease';
       img.style.cursor = 'pointer';
@@ -423,27 +410,27 @@ function fetchAndDisplayImages() {
       img.addEventListener('mouseenter', () => img.style.transform = 'scale(1.1)');
       img.addEventListener('mouseleave', () => img.style.transform = 'scale(1.0)');
 
-      galleryContainer.appendChild(img);
+      galleryGrid.appendChild(img);
     });
 
-    // Atur tombol pagination
-    document.getElementById('prevPageBtn').disabled = currentPage === 1;
-    document.getElementById('nextPageBtn').disabled = startIndex + paginatedImages.length >= imageArray.length;
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages;
   });
 }
 
-// Pagination Event Listeners
-document.getElementById('prevPageBtn').addEventListener('click', () => {
+prevPageBtn.addEventListener("click", () => {
   if (currentPage > 1) {
     currentPage--;
     fetchAndDisplayImages();
   }
 });
 
-document.getElementById('nextPageBtn').addEventListener('click', () => {
-  database.ref('gallery').once('value', (snapshot) => {
+nextPageBtn.addEventListener("click", () => {
+  database.ref("gallery").once("value", (snapshot) => {
     const totalImages = snapshot.numChildren();
-    if ((currentPage * itemsPerPage) < totalImages) {
+    const totalPages = Math.ceil(totalImages / itemsPerPage);
+    if (currentPage < totalPages) {
       currentPage++;
       fetchAndDisplayImages();
     }
