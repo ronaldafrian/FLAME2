@@ -1,3 +1,18 @@
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
+  authDomain: "flame-pfp-gallery.firebaseapp.com",
+  databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com", 
+  projectId: "flame-pfp-gallery",
+  storageBucket: "flame-pfp-gallery.firebasestorage.app",
+  messagingSenderId: "886318353088",
+  appId: "1:886318353088:web:ffe6698531b7347b0bfb25"
+};
+
+// Inisialisasi Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 // Referensi DOM
 const profileInput = document.getElementById('profileInput');
 const cropperImage = document.getElementById('cropperImage');
@@ -130,14 +145,34 @@ function drawPFP() {
   if (profileImg) {
     ctx.drawImage(profileImg, 0, 0, canvas.width, canvas.height);
   }
+
   if (maskImg) {
     const scaledWidth = maskImg.width * maskScale;
     const scaledHeight = maskImg.height * maskScale;
+
+    // Gambar mask
     ctx.save();
     ctx.translate(maskPosition.x + scaledWidth / 2, maskPosition.y + scaledHeight / 2);
     ctx.rotate(maskAngle);
     ctx.drawImage(maskImg, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
     ctx.restore();
+
+    // Titik kontrol hanya untuk desktop
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile) {
+      const centerX = maskPosition.x + scaledWidth / 2;
+      const centerY = maskPosition.y + scaledHeight / 2;
+
+      // Titik rotate (lingkaran merah)
+      ctx.beginPath();
+      ctx.arc(centerX, centerY - scaledHeight / 2 - 20, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+
+      // Kotak resize (biru muda)
+      ctx.fillStyle = '#00ffcc';
+      ctx.fillRect(centerX + scaledWidth / 2 - 12, centerY + scaledHeight / 2 - 12, 12, 12);
+    }
   } else {
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
@@ -169,44 +204,48 @@ canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
+
   if (!maskImg) return;
 
   const scaledWidth = maskImg.width * maskScale;
   const scaledHeight = maskImg.height * maskScale;
-  const centerX = maskPosition.x + scaledWidth / 2;
-  const centerY = maskPosition.y + scaledHeight / 2;
   const handleSize = 40;
 
+  // Resize Handle
   if (
     mouseX >= maskPosition.x + scaledWidth - handleSize &&
     mouseX <= maskPosition.x + scaledWidth &&
     mouseY >= maskPosition.y + scaledHeight - handleSize &&
     mouseY <= maskPosition.y + scaledHeight
-    ) {
-    isResizing = true;
-  resizeStart = { x: mouseX, y: mouseY };
-  initialMaskScale = maskScale;
-  return;
-}
-
-const dx = mouseX - centerX;
-const dy = mouseY - (centerY - scaledHeight / 2 - 20);
-if (Math.sqrt(dx * dx + dy * dy) <= 10) {
-  isRotating = true;
-  rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
-  return;
-}
-
-if (
-  mouseX >= maskPosition.x &&
-  mouseX <= maskPosition.x + maskImg.width * maskScale &&
-  mouseY >= maskPosition.y &&
-  mouseY <= maskPosition.y + maskImg.height * maskScale
   ) {
-  isDragging = true;
-dragOffset.x = mouseX - maskPosition.x;
-dragOffset.y = mouseY - maskPosition.y;
-}
+    isResizing = true;
+    resizeStart = { x: mouseX, y: mouseY };
+    initialMaskScale = maskScale;
+    return;
+  }
+
+  // Rotate Handle
+  const centerX = maskPosition.x + scaledWidth / 2;
+  const centerY = maskPosition.y + scaledHeight / 2;
+  const dx = mouseX - centerX;
+  const dy = mouseY - (centerY - scaledHeight / 2 - 20);
+  if (Math.sqrt(dx * dx + dy * dy) <= 10) {
+    isRotating = true;
+    rotateStartAngle = Math.atan2(dy, dx) - lastMaskAngle;
+    return;
+  }
+
+  // Drag Handle
+  if (
+    mouseX >= maskPosition.x &&
+    mouseX <= maskPosition.x + scaledWidth &&
+    mouseY >= maskPosition.y &&
+    mouseY <= maskPosition.y + scaledHeight
+  ) {
+    isDragging = true;
+    dragOffset.x = mouseX - maskPosition.x;
+    dragOffset.y = mouseY - maskPosition.y;
+  }
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -265,16 +304,16 @@ canvas.addEventListener('touchstart', (e) => {
       touchX <= maskPosition.x + scaledWidth &&
       touchY >= maskPosition.y &&
       touchY <= maskPosition.y + scaledHeight
-      ) {
+    ) {
       isDragging = true;
-    dragOffset.x = touchX - maskPosition.x;
-    dragOffset.y = touchY - maskPosition.y;
+      dragOffset.x = touchX - maskPosition.x;
+      dragOffset.y = touchY - maskPosition.y;
+    }
   }
-}
 }, { passive: true });
 
 canvas.addEventListener('touchmove', (e) => {
-  e.preventDefault(); // mencegah scroll saat drag
+  e.preventDefault(); // Mencegah scroll saat drag
   if (!maskImg) return;
 
   if (e.touches.length === 1) {
@@ -314,6 +353,7 @@ downloadBtn.addEventListener('click', () => {
   tempCanvas.width = HD_SIZE;
   tempCanvas.height = HD_SIZE;
 
+  // Gambar background dan mask
   tempCtx.drawImage(profileImg, 0, 0, HD_SIZE, HD_SIZE);
 
   const scaleRatio = HD_SIZE / canvas.width;
@@ -331,6 +371,7 @@ downloadBtn.addEventListener('click', () => {
 
   const dataURL = tempCanvas.toDataURL('image/png');
 
+  // Download gambar
   const link = document.createElement('a');
   link.download = 'FLAME_GANG_HD.png';
   link.href = dataURL;
@@ -350,27 +391,12 @@ downloadBtn.addEventListener('click', () => {
   });
 });
 
-// Inisialisasi Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyD5eY-VGogTeez_5LLge42jl7eFfH441lY",
-  authDomain: "flame-pfp-gallery.firebaseapp.com",
-  databaseURL: "https://flame-pfp-gallery-default-rtdb.firebaseio.com", 
-  projectId: "flame-pfp-gallery",
-  storageBucket: "flame-pfp-gallery.firebasestorage.app",
-  messagingSenderId: "886318353088",
-  appId: "1:886318353088:web:ffe6698531b7347b0bfb25"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
 // Ambil gambar dari Firebase dan tampilkan
 const galleryContainer = document.getElementById('userGallery');
 let currentPage = 1;
-const itemsPerPage = 8; // Number of images per page
+const itemsPerPage = 8;
 
 function fetchAndDisplayImages() {
-  const galleryContainer = document.getElementById('userGallery');
   galleryContainer.innerHTML = '';
   database.ref('gallery').on('value', (snapshot) => {
     const images = snapshot.val();
@@ -386,20 +412,21 @@ function fetchAndDisplayImages() {
     paginatedImages.forEach(imageUrl => {
       const img = document.createElement('img');
       img.src = imageUrl;
-      img.style.width = '150px'; // Match CSS width
-      img.style.height = '150px'; // Match CSS height
+      img.style.width = '150px';
+      img.style.height = '150px';
       img.style.objectFit = 'cover';
       img.style.borderRadius = '10px';
-      img.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.15)';
+      img.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
       img.style.transition = 'transform 0.3s ease';
       img.style.cursor = 'pointer';
 
       img.addEventListener('mouseenter', () => img.style.transform = 'scale(1.1)');
       img.addEventListener('mouseleave', () => img.style.transform = 'scale(1.0)');
+
       galleryContainer.appendChild(img);
     });
 
-    // Disable pagination buttons if necessary
+    // Atur tombol pagination
     document.getElementById('prevPageBtn').disabled = currentPage === 1;
     document.getElementById('nextPageBtn').disabled = startIndex + paginatedImages.length >= imageArray.length;
   });
