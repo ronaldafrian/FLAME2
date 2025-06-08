@@ -35,6 +35,7 @@
       <div class="gallery-container">
         <button id="prevBtn" class="nav-btn">&#8592;</button>
         <div class="gallery" id="maskGallery">
+          <!-- Hanya 3 mask yang tertampil -->
           <img src="mask1.png" alt="Mask 1" />
           <img src="mask2.png" alt="Mask 2" />
           <img src="mask3.png" alt="Mask 3" />
@@ -50,15 +51,18 @@
     <div class="controls">
       <button id="downloadBtn">💾 Download PFP</button>
     </div>
-
-    <!-- Link ke Galeri -->
-    <a href="gallery.html" style="color:#ff6600;text-decoration:none;font-weight:bold;">🎨 FLAMERS</a>
   </div>
 
   <!-- Gallery Section -->
   <div class="gallery-container">
-    <h2>🔥 Galeri Pengguna FLAME PFP</h2>
+    <h2 id="gallery-title">🔥 Recent FLAME PFP</h2>
     <div id="userGallery" class="gallery"></div>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination">
+    <button id="prevPageBtn">❮ Previous</button>
+    <button id="nextPageBtn">Next ❯</button>
   </div>
 
   <!-- Script Section -->
